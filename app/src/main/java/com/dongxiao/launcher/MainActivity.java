@@ -291,13 +291,8 @@ public class MainActivity extends Activity {
                 i.addCategory(Intent.CATEGORY_LAUNCHER);
                 i.setClassName(pkg, cls);
                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+                // 三星的弹出窗口会层层叠加且位置不受控，改为从图标位置放大成全屏打开
                 ActivityOptions o = ActivityOptions.makeScaleUpAnimation(web, ix, iy, Math.max(1, iw), Math.max(1, ih));
-                o.setLaunchBounds(new Rect(l, t, r, b));
-                try {   // 5 = WINDOWING_MODE_FREEFORM；不可用时忽略
-                    Method m = ActivityOptions.class.getMethod("setLaunchWindowingMode", int.class);
-                    m.invoke(o, 5);
-                } catch (Throwable ignored) {
-                }
                 try {
                     startActivity(i, o.toBundle());
                 } catch (Exception e) {
