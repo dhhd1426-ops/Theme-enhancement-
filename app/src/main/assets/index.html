@@ -163,6 +163,42 @@ body{background:var(--stage);color:var(--ink);font-family:var(--body);
 .done{font-size:12px;color:var(--muted)}
 .pill.wide{margin-top:12px;width:100%;flex:0 0 auto}
 
+/* 最近使用胶囊：宽度固定露 5 个，多了在胶囊里左右滑；自绘滚动（跟手 + 投影吸附） */
+@property --fl{syntax:'<number>';inherits:false;initial-value:1}
+@property --fr{syntax:'<number>';inherits:false;initial-value:1}
+.dock{position:absolute;left:50%;bottom:30px;display:flex;align-items:center;gap:6px;padding:8px;border-radius:32px;transform:translateX(-50%);
+  background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,.04) 55%,rgba(255,255,255,.10));
+  border:.5px solid rgba(255,255,255,.38);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 -1px 0 rgba(255,255,255,.08),0 10px 30px rgba(0,0,0,.22);
+  backdrop-filter:blur(10px) saturate(180%) brightness(1.08);-webkit-backdrop-filter:blur(10px) saturate(180%) brightness(1.08);
+  transition:opacity calc(180ms*var(--speed)) var(--std)}
+.dview{width:264px;height:48px;overflow:hidden;touch-action:none;
+  -webkit-mask-image:linear-gradient(to right,rgba(0,0,0,var(--fl)) 0,#000 22px,#000 calc(100% - 22px),rgba(0,0,0,var(--fr)) 100%);
+  mask-image:linear-gradient(to right,rgba(0,0,0,var(--fl)) 0,#000 22px,#000 calc(100% - 22px),rgba(0,0,0,var(--fr)) 100%);
+  transition:--fl calc(180ms*var(--speed)) var(--std),--fr calc(180ms*var(--speed)) var(--std)}
+.dtrack{display:flex;gap:6px;width:max-content;will-change:transform}
+.dbtn{all:unset;box-sizing:border-box;position:relative;width:48px;height:48px;border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;flex:0 0 auto;transition:transform calc(180ms*var(--speed)) var(--std),background-color calc(180ms*var(--speed)) var(--std)}
+.dbtn .tile{width:44px;height:44px;border-radius:14px;font-size:19px}
+.dbtn.is-down{transform:scale(.9);transition-duration:calc(70ms*var(--speed))}
+.dbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.dsep{width:1px;height:28px;background:rgba(255,255,255,.25);margin:0 4px}
+.dbtn.more{border-radius:24px;color:var(--ink)}
+@media (hover:hover){.dbtn.more:hover{background:rgba(255,255,255,.12)}}
+.dperm{all:unset;box-sizing:border-box;width:264px;height:48px;border-radius:24px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;color:var(--ink);cursor:pointer;
+  transition:transform calc(180ms*var(--speed)) var(--std),background-color calc(180ms*var(--speed)) var(--std)}
+.dperm.is-down{transform:scale(.97);background:rgba(255,255,255,.12);transition-duration:calc(70ms*var(--speed))}
+.dperm:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.dempty{width:264px;height:48px;display:flex;align-items:center;justify-content:center;font-size:13px;color:rgba(242,237,230,.7)}
+.rlist{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.rrow{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:14px;min-height:60px;padding:0 14px 0 10px;border-radius:18px;background:#2C2F38;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:background-color calc(180ms*var(--speed)) var(--std),transform calc(180ms*var(--speed)) var(--std)}
+.rrow .tile{width:40px;height:40px;border-radius:13px;font-size:17px}
+.rrow b{flex:1 1 auto;font-size:15px;font-weight:400;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rrow small{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.rrow.is-down{background:#363A45;transform:scale(.985);transition-duration:calc(70ms*var(--speed))}
+.rrow:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.rsec{padding:8px 6px 4px;font-size:13px;letter-spacing:4px;color:var(--muted)}
+
 /* 模拟系统桌面 */
 .sys{position:absolute;inset:0;background:#1B1D22;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:0 40px;
   text-align:center;opacity:0;visibility:hidden}
@@ -248,7 +284,17 @@ body{padding:0 !important;-webkit-user-select:none;user-select:none}
         <span class="ic" id="ic"><i class="ln" id="l1"></i><i class="ln" id="l2"></i><i class="ln" id="l3"></i></span>
       </button>
 
-      <button class="cscrim" id="cscrim" tabindex="-1" aria-label="关闭壁纸设置"></button>
+      <nav class="dock" id="dock" aria-label="最近使用">
+        <div class="dview" id="dview"><div class="dtrack" id="dtrack"></div></div>
+        <button class="dperm" id="dperm" data-press hidden>
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>开启最近使用</button>
+        <span class="dsep" aria-hidden="true"></span>
+        <button class="dbtn more" id="dmore" data-press aria-label="查看全部最近使用" aria-haspopup="dialog">
+          <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
+        </button>
+      </nav>
+
+      <button class="cscrim" id="cscrim" tabindex="-1" aria-label="关闭卡片"></button>
       <section class="card" id="card" role="dialog" aria-modal="true" aria-labelledby="cardTitle" inert>
         <div class="card-in" id="cardIn">
           <div class="ch">
@@ -304,6 +350,19 @@ body{padding:0 !important;-webkit-user-select:none;user-select:none}
               <button class="pill wide" id="pickOk" data-press disabled>选择要添加的软件</button>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section class="card" id="recCard" role="dialog" aria-modal="true" aria-labelledby="recTitle" inert>
+        <div class="card-in" id="recIn">
+          <div class="ch">
+            <span class="tile big"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span>
+            <div class="ct"><h2 id="recTitle">最近使用</h2><p id="recSub">来自手机的使用记录</p></div>
+          </div>
+          <button class="xbtn" id="recX" data-press aria-label="放大卡片" aria-expanded="false">
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+          </button>
+          <div class="rlist" id="rlist"></div>
         </div>
       </section>
 
@@ -482,7 +541,7 @@ let drag=null, samples=[], lastV=null;
 function track(cx){const t=performance.now();samples.push([t,cx]);while(samples.length>2&&t-samples[0][0]>80)samples.shift();}
 function velocity(){if(samples.length<2)return 0;const a=samples[0],b=samples[samples.length-1];return (b[1]-a[1])/Math.max(16,b[0]-a[0])*1000/scale;}
 screen.addEventListener('pointerdown',e=>{
-  if(e.button>0||activeCard||sysOn)return;
+  if(e.button>0||activeCard||sysOn||e.target.closest('#dock'))return;
   const r=screen.getBoundingClientRect(), lx=(e.clientX-r.left)/scale;
   if(e.target.closest('#menuBtn'))return;
   if(target!=='open'&&lx>24)return;
@@ -599,6 +658,7 @@ function makeCard(el,inner,xb,A,origin,trigger,onHidden){
 // 缩放原点对准侧栏里触发它的那个图标
 const setCard=makeCard($('card'),$('cardIn'),$('xbtn'),{l:16,t:150,w:358,h:268,r:28},'30px 242px',gear,()=>{rowwrap.dataset.state='main';});
 const appsCard=makeCard($('appsCard'),$('appsIn'),$('appsX'),{l:16,t:120,w:358,h:470,r:28},'30px 32px',appsItem,()=>{views.dataset.view='grid';});
+const recCard=makeCard($('recCard'),$('recIn'),$('recX'),{l:16,t:150,w:358,h:540,r:28},'314px 610px',$('dmore'),null);
 cscrim.addEventListener('click',()=>{ activeCard&&activeCard.close(); });
 
 /* ── 软件收纳：一开始是空的，从系统软件里挑着加 ── */
@@ -721,6 +781,95 @@ function showToast(msg){
   if(toastT) toastT();
   toastT=M.after(1600,()=>{ toast.classList.remove('show'); toastT=null; });
 }
+
+/* ── 最近使用胶囊（方案 B）：数据来自安卓使用记录；点图标以悬浮窗打开 ── */
+const dockEl=$('dock'),dview=$('dview'),dtrack=$('dtrack'),dperm=$('dperm'),dmore=$('dmore'),rlist=$('rlist'),recSub=$('recSub');
+const STEP=54, VIEW=264;
+const DEMO_REC=[['微信',0],['抖音',2],['网易云音乐',8],['高德地图',25],['小红书',60],['相机',70],['支付宝',120],['哔哩哔哩',130],['淘宝',180]]
+  .map(([n,m])=>({id:'demo/'+n,label:n,icon:'',time:Date.now()-m*60000}));
+let recents=[], dsx=0, dAnim=null, dDrag=null, dSupp=false, dSamples=[];
+function timeAgo(t){const m=Math.floor((Date.now()-t)/60000);if(m<1)return'刚刚';if(m<60)return m+' 分钟前';const h=Math.floor(m/60);if(h<24)return h+' 小时前';return Math.floor(h/24)+' 天前';}
+function dMax(){return Math.max(0,recents.length*STEP-6-VIEW);}
+function renderTrack(){
+  dtrack.style.transform='translateX('+(-dsx).toFixed(2)+'px)';
+  dview.style.setProperty('--fl',dsx>2?0:1); dview.style.setProperty('--fr',dsx<dMax()-2?0:1);
+}
+function buildDock(){
+  const old=new Map([...dtrack.children].map(el=>[el.dataset.id,el.offsetLeft-dsx]));
+  dtrack.innerHTML=recents.map(a=>'<button class="dbtn" data-press data-id="'+esc(a.id)+'" aria-label="打开'+esc(a.label)+'">'+tileHtml(a)+'</button>').join('');
+  dsx=0; renderTrack();
+  // 顺序变化时图标滑到新位置（FLIP），视觉上不跳
+  if(!reduced&&old.size){
+    const moved=[];
+    [...dtrack.children].forEach(el=>{const o=old.get(el.dataset.id);if(o==null)return;const dx=o-el.offsetLeft;if(Math.abs(dx)<1)return;
+      el.style.transition='none';el.style.transform='translateX('+dx+'px)';moved.push(el);});
+    void dtrack.offsetWidth;
+    moved.forEach(el=>{el.style.transition='transform calc(320ms*var(--speed)) var(--std)';el.style.transform='';});
+    M.after(360,()=>moved.forEach(el=>{el.style.transition='';}));
+  }
+  const empty=!recents.length;
+  dview.style.opacity=empty?.0:1;
+  buildRecList();
+}
+function buildRecList(){
+  recSub.textContent=recents.length?recents.length+' 个软件 · 来自手机的使用记录':'还没有使用记录';
+  const now=Date.now(), a1=recents.filter(a=>now-a.time<=10*60000), a2=recents.filter(a=>now-a.time>10*60000);
+  const row=a=>'<button class="rrow" data-press data-id="'+esc(a.id)+'">'+tileHtml(a)+'<b>'+esc(a.label)+'</b><small>'+timeAgo(a.time)+'</small></button>';
+  rlist.innerHTML=(a1.length?'<div class="rsec">刚 刚</div>'+a1.map(row).join(''):'')+(a2.length?'<div class="rsec">更 早</div>'+a2.map(row).join(''):'')||
+    '<p class="e2" style="text-align:center;margin:40px auto">用过的软件会按时间出现在这里</p>';
+}
+function setRecents(list){
+  recents=list; buildDock();
+}
+window.__onRecents=function(json){ let list=[]; try{list=JSON.parse(json);}catch(e){} setRecents(list); };
+function refreshRecents(){
+  if(!NATIVE){ if(!recents.length) setRecents(DEMO_REC.slice()); return; }
+  const ok=window.Launcher.hasUsageAccess();
+  dperm.hidden=ok; dview.hidden=!ok;
+  if(ok) window.Launcher.loadRecents('__onRecents');
+}
+dperm.addEventListener('click',()=>window.Launcher&&window.Launcher.openUsageAccess());
+dmore.addEventListener('click',()=>recCard.show());
+
+/* 胶囊内拖动：跟手，松手按「位置 + 速度×0.2s」投影吸附到整格，弹簧继承速度 */
+function dTrackPt(x){const t=performance.now();dSamples.push([t,x]);while(dSamples.length>2&&t-dSamples[0][0]>80)dSamples.shift();}
+function dVel(){if(dSamples.length<2)return 0;const a=dSamples[0],b=dSamples[dSamples.length-1];return(b[1]-a[1])/Math.max(16,b[0]-a[0])*1000/scale;}
+dview.addEventListener('pointerdown',e=>{ if(e.button>0)return; if(dAnim){dAnim.stop();dAnim=null;} dDrag={id:e.pointerId,x0:e.clientX,s0:dsx,active:false}; dSamples=[]; dTrackPt(e.clientX); });
+dview.addEventListener('pointermove',e=>{
+  if(!dDrag||e.pointerId!==dDrag.id)return;
+  const dx=(e.clientX-dDrag.x0)/scale;
+  if(!dDrag.active){ if(Math.abs(dx)<6)return; dDrag.active=true; dview.setPointerCapture(e.pointerId); clearPress(); dDrag.x0=e.clientX; dDrag.s0=dsx; return; }
+  let n=dDrag.s0-dx, mx=dMax();
+  if(n<0) n*=.3; else if(n>mx) n=mx+(n-mx)*.3;     // 拉过头给阻尼
+  dsx=n; dTrackPt(e.clientX); renderTrack();
+});
+function dEnd(e){
+  if(!dDrag||e.pointerId!==dDrag.id)return; const was=dDrag.active; dDrag=null; if(!was)return;
+  dSupp=true; setTimeout(()=>{dSupp=false;},0);
+  const v=-dVel(), mx=dMax(), proj=dsx+v*.2;
+  let to=Math.round(proj/STEP)*STEP; if(proj>mx-STEP/2) to=mx; to=clamp(to,0,mx);
+  if(reduced){dsx=to;renderTrack();return;}
+  dAnim=M.spring({from:dsx,to,v,k:380,c:38,update:x=>{dsx=x;renderTrack();},done:()=>{dAnim=null;}});
+}
+dview.addEventListener('pointerup',dEnd); dview.addEventListener('pointercancel',dEnd);
+
+/* 打开：悬浮窗停在胶囊上方，从图标位置放大出来 */
+function launchRecent(id,el){
+  const a=recents.find(x=>x.id===id); if(!a)return;
+  if(NATIVE){
+    const dpr=window.devicePixelRatio||1, r=el.getBoundingClientRect(), d=dockEl.getBoundingClientRect();
+    const top=Math.round(52*scale*dpr), left=Math.round(12*scale*dpr), right=Math.round((390-12)*scale*dpr), bottom=Math.round((d.top-20*scale)*dpr);
+    window.Launcher.launchFloating(id, Math.round(r.left*dpr), Math.round(r.top*dpr), Math.round(r.width*dpr), Math.round(r.height*dpr), left, top, right, bottom);
+  }else showToast('以悬浮窗打开「'+a.label+'」（浏览器里为模拟）');
+  // 用过的排到最前（先让打开动画走完再重排）
+  M.after(400,()=>{ a.time=Date.now(); recents=[a,...recents.filter(x=>x!==a)]; buildDock(); });
+}
+dtrack.addEventListener('click',e=>{ if(dSupp)return; const b=e.target.closest('.dbtn'); if(b) launchRecent(b.dataset.id,b); });
+rlist.addEventListener('click',e=>{ const b=e.target.closest('.rrow'); if(!b)return; recCard.close(true); launchRecent(b.dataset.id,b); });
+
+window.onResumed=()=>{ refreshRecents(); refreshApps(); };
+refreshRecents();
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) refreshRecents(); });
 
 setReduced(reduced);
 render();

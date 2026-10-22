@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- 最近使用：读取使用记录，需要用户在系统设置里手动开启 -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
 
     <!-- 只查询有桌面图标的软件，用于「添加系统软件」列表 -->
     <queries>
@@ -20,6 +26,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
+            android:excludeFromRecents="true"
             android:stateNotNeeded="true"
             android:clearTaskOnLaunch="true"
             android:resumeWhilePausing="true"
