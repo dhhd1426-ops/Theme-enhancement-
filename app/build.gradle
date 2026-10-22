@@ -10,8 +10,20 @@ android {
         applicationId 'com.dongxiao.launcher'
         minSdk 26
         targetSdk 34
-        versionCode 1
-        versionName '0.1'
+        // 版本号跟随云端构建编号，和 Release 的 v0.1.N 对应
+        def run = (System.getenv('GITHUB_RUN_NUMBER') ?: '1') as Integer
+        versionCode run
+        versionName "0.1.${run}"
+    }
+
+    // 固定的测试签名：每次云端构建签名一致，新版可以直接覆盖安装
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
     }
 
     compileOptions {
