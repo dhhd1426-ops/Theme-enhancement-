@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>壁纸桌面</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,300;1,400&family=Noto+Sans+SC:wght@300;400;500&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+/* 布局：左侧一台 390×844 手机原型（按视口缩放），右侧 / 下方是演示控件。单一深色观感。 */
+:root{
+  --stage:#0D0E13;
+  --phone-edge:#2A2C35;
+  --ink:#F2EDE6;
+  --muted:#A9A39B;
+  --accent:#E8B48A;
+  --line:rgba(255,255,255,.1);
+  --panel:linear-gradient(160deg, rgba(255,255,255,.16), rgba(255,255,255,.04) 55%, rgba(255,255,255,.10));
+  --ctl:#191B23;
+  --ctl-hi:#242733;
+  --display:'Cormorant Garamond', 'Times New Roman', serif;
+  --body:'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --mono:'JetBrains Mono', ui-monospace, Menlo, monospace;
+  --speed:1;
+  --std:cubic-bezier(.2,0,0,1);
+  --decel:cubic-bezier(.05,.7,.1,1);
+  --accel:cubic-bezier(.3,0,.8,.15);
+  color-scheme:dark;
+}
+html,body{min-height:100%}
+body{background:var(--stage);color:var(--ink);font-family:var(--body);
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:20px 32px}
+.wrap{display:flex;flex-wrap:wrap;gap:28px 40px;justify-content:center;align-items:flex-start}
+.phone-box{position:relative;flex:0 0 auto;max-width:100%}
+.screen{position:absolute;left:0;top:0;width:390px;height:844px;transform-origin:0 0;overflow:hidden;border-radius:44px;
+  box-shadow:0 0 0 1px var(--phone-edge), 0 30px 80px rgba(0,0,0,.55);background:#12141C;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.layer{position:absolute;inset:0}
+.wall{width:100%;height:100%;object-fit:cover;object-position:68% center;display:block;max-width:none;pointer-events:none}
+.wall-wrap{will-change:auto}
+.greet{position:absolute;left:0;right:0;top:360px;display:flex;flex-direction:column;align-items:center;gap:18px;pointer-events:none}
+.greet h1{margin:0;font-family:var(--display);font-style:italic;font-weight:300;font-size:48px;letter-spacing:1px;line-height:1}
+.greet .rule{width:44px;height:1px;background:var(--accent);opacity:.7}
+.edge{position:absolute;left:4px;top:50%;width:3px;height:44px;margin-top:-22px;border-radius:2px;background:var(--ink);opacity:.22;pointer-events:none}
+
+.scrim{position:absolute;inset:0;background:rgba(6,7,12,.08);opacity:0;border:0;padding:0;margin:0;visibility:hidden;cursor:default}
+/* 苹果式悬浮玻璃：轻模糊、高饱和、细亮边，背景清楚透出来 */
+.panel{position:absolute;top:116px;left:10px;width:72px;box-sizing:border-box;padding:8px 0;display:flex;flex-direction:column;align-items:center;
+  border-radius:36px;background:var(--panel);
+  backdrop-filter:blur(10px) saturate(180%) brightness(1.08);-webkit-backdrop-filter:blur(10px) saturate(180%) brightness(1.08);
+  border:0.5px solid rgba(255,255,255,.38);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45), inset 0 -1px 0 rgba(255,255,255,.08), 0 10px 30px rgba(0,0,0,.22);
+  transform:translateX(-96px);visibility:hidden}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.nav{display:flex;flex-direction:column;gap:4px;margin:0;padding:0;list-style:none}
+.item{all:unset;box-sizing:border-box;display:block;border-radius:16px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.item-in{position:relative;display:flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:28px;
+  transition:background-color calc(180ms*var(--speed)) var(--std), transform calc(180ms*var(--speed)) var(--std)}
+.item.is-down .item-in{background:rgba(255,255,255,.16);transform:scale(.985);transition-duration:calc(70ms*var(--speed))}
+@media (hover:hover){.item:hover .item-in{background:rgba(255,255,255,.05)}}
+.item:focus-visible .item-in{outline:2px solid var(--accent);outline-offset:-2px}
+.item svg{flex:0 0 auto;stroke:var(--accent)}
+.item .dot{position:absolute;right:5px;top:50%;margin-top:-2.5px;width:5px;height:5px;border-radius:3px;background:var(--accent);opacity:0;transform:scale(.4);
+  transition:opacity calc(180ms*var(--speed)) var(--std), transform calc(180ms*var(--speed)) var(--std)}
+.item[aria-current="true"] .dot{opacity:1;transform:scale(1)}
+.menu-btn{position:absolute;top:52px;left:22px;width:48px;height:48px;padding:0;border-radius:24px;color:var(--ink);
+  background:rgba(255,255,255,.12);border:0.5px solid rgba(255,255,255,.34);box-shadow:inset 0 1px 0 rgba(255,255,255,.4), 0 6px 18px rgba(0,0,0,.18);
+  backdrop-filter:blur(10px) saturate(180%);-webkit-backdrop-filter:blur(10px) saturate(180%);
+  cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  transition:transform calc(180ms*var(--speed)) var(--std), background-color calc(180ms*var(--speed)) var(--std)}
+.menu-btn.is-down{transform:scale(.9);background:rgba(255,255,255,.24);transition-duration:calc(70ms*var(--speed))}
+@media (hover:hover){.menu-btn:hover{background:rgba(255,255,255,.18)}}
+.menu-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ic{position:absolute;left:12px;top:12px;width:24px;height:24px}
+.ln{position:absolute;left:4px;top:11.3px;width:16px;height:1.4px;border-radius:1px;background:currentColor;transform-origin:50% 50%}
+
+/* 壁纸设置卡片：参照聊天 App「我的」卡片的深色分组样式 */
+.cscrim{position:absolute;inset:0;background:rgba(6,7,12,.5);opacity:0;visibility:hidden;border:0;padding:0;margin:0;cursor:default}
+.card{position:absolute;left:16px;top:150px;width:358px;height:268px;box-sizing:border-box;border-radius:28px;overflow:hidden;
+  background:#23262E;border:0.5px solid rgba(255,255,255,.08);box-shadow:0 24px 60px rgba(0,0,0,.45);
+  opacity:0;visibility:hidden;transform-origin:30px 242px}
+.card-in{position:relative;display:flex;flex-direction:column;gap:18px;padding:24px 18px 20px}
+.ch{display:flex;align-items:center;gap:16px;padding:0 6px;min-height:64px}
+.ava{width:56px;height:56px;border-radius:28px;object-fit:cover;object-position:68% 22%;flex:0 0 auto;max-width:none}
+.ct h2{margin:0;font-size:22px;font-weight:500;letter-spacing:.5px}
+.ct p{margin:4px 0 0;font-size:13px;color:var(--muted)}
+.xbtn{position:absolute;top:16px;right:12px;width:44px;height:44px;border:0;border-radius:22px;background:transparent;color:var(--ink);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  transition:transform calc(180ms*var(--speed)) var(--std), background-color calc(180ms*var(--speed)) var(--std)}
+.xbtn.is-down{transform:scale(.9);background:rgba(255,255,255,.12);transition-duration:calc(70ms*var(--speed))}
+@media (hover:hover){.xbtn:hover{background:rgba(255,255,255,.07)}}
+.xbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sec{padding:0 8px;font-size:13px;letter-spacing:4px;color:var(--muted)}
+.rowwrap{position:relative;min-height:80px}
+.srow,.confirm{position:absolute;inset:0;box-sizing:border-box;border-radius:22px;background:#2C2F38;display:flex;align-items:center;gap:14px;padding:0 14px;
+  transition:opacity calc(180ms*var(--speed)) var(--std), transform calc(180ms*var(--speed)) var(--std), background-color calc(180ms*var(--speed)) var(--std), visibility 0s linear 0s}
+.srow{border:0;font:inherit;color:var(--ink);text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.srow.is-down{background:#363A45;transform:scale(.985);transition-duration:calc(70ms*var(--speed))}
+@media (hover:hover){.srow:hover{background:#31343E}}
+.srow:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tile{width:52px;height:52px;border-radius:16px;background:#3A3D47;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--accent)}
+.rt{display:flex;flex-direction:column;gap:4px;flex:1 1 auto;min-width:0}
+.rt b{font-size:17px;font-weight:500}
+.rt small{font-size:13px;color:var(--muted)}
+.chev{color:var(--muted);flex:0 0 auto}
+.confirm{padding:0 12px 0 20px;opacity:0;transform:translateX(10px);visibility:hidden;
+  transition:opacity calc(140ms*var(--speed)) var(--accel), transform calc(140ms*var(--speed)) var(--accel), visibility 0s linear calc(140ms*var(--speed))}
+.cq{flex:1 1 auto;font-size:15px}
+.pill{border:0;font:inherit;font-size:15px;min-height:44px;padding:0 18px;border-radius:22px;cursor:pointer;background:var(--accent);color:#2A1B12;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  transition:transform calc(180ms*var(--speed)) var(--std), background-color calc(180ms*var(--speed)) var(--std), opacity calc(180ms*var(--speed)) var(--std)}
+.pill.ghost{background:#3A3D47;color:var(--ink)}
+.pill.is-down{transform:scale(.95);transition-duration:calc(70ms*var(--speed))}
+.pill:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pill:disabled{opacity:.4;cursor:not-allowed}
+.rowwrap[data-state="confirm"] .srow{opacity:0;transform:translateX(-10px);visibility:hidden;
+  transition:opacity calc(140ms*var(--speed)) var(--accel), transform calc(140ms*var(--speed)) var(--accel), visibility 0s linear calc(140ms*var(--speed))}
+.rowwrap[data-state="confirm"] .confirm{opacity:1;transform:none;visibility:visible;
+  transition:opacity calc(180ms*var(--speed)) var(--decel) calc(60ms*var(--speed)), transform calc(180ms*var(--speed)) var(--decel) calc(60ms*var(--speed)), visibility 0s linear 0s}
+
+[hidden]{display:none !important}
+/* 软件收纳 */
+.card-in{height:100%;box-sizing:border-box}
+.tile.big{width:56px;height:56px;border-radius:18px}
+.views{position:relative;flex:1 1 auto;min-height:0}
+.view{position:absolute;inset:0;display:flex;flex-direction:column;
+  transition:opacity calc(200ms*var(--speed)) var(--decel), transform calc(200ms*var(--speed)) var(--decel), visibility 0s linear 0s}
+.views[data-view="grid"] .v-pick, .views[data-view="pick"] .v-grid{opacity:0;visibility:hidden;
+  transition:opacity calc(140ms*var(--speed)) var(--accel), transform calc(140ms*var(--speed)) var(--accel), visibility 0s linear calc(140ms*var(--speed))}
+.views[data-view="grid"] .v-pick{transform:translateX(16px)}
+.views[data-view="pick"] .v-grid{transform:translateX(-16px)}
+.empty{margin:auto 0;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:0 24px 12px}
+.e-ic{width:64px;height:64px;border-radius:20px;background:#2C2F38;display:flex;align-items:center;justify-content:center;color:var(--muted);margin-bottom:6px}
+.e1{margin:0;font-size:17px;font-weight:500}
+.e2{margin:0 0 8px;font-size:13px;line-height:1.7;color:var(--muted);max-width:250px}
+.agrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px 6px;padding:6px 2px;overflow:auto;align-content:start;flex:1 1 auto;min-height:0}
+.app{all:unset;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0;padding:4px 0;border-radius:16px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:opacity calc(240ms*var(--speed)) var(--decel), transform calc(240ms*var(--speed)) var(--decel)}
+.app .tile{font-size:22px;transition:transform calc(180ms*var(--speed)) var(--std), background-color calc(180ms*var(--speed)) var(--std)}
+.app.is-down .tile{transform:scale(.92);background:#454955;transition-duration:calc(70ms*var(--speed))}
+@media (hover:hover){.app:hover .tile{background:#41444F}}
+.app:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app .nm{font-size:12px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.app.add .tile{background:transparent;border:1px dashed rgba(255,255,255,.3);color:var(--muted)}
+.app.add .nm{color:var(--muted)}
+.app.new{opacity:0;transform:scale(.9)}
+.pk-h{display:flex;align-items:center;gap:4px;min-height:44px;margin:-4px 0 10px -6px}
+.pk-h b{font-size:16px;font-weight:500}
+.xbtn.back{position:static}
+.plist{list-style:none;margin:0;padding:0;flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.pick{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:14px;width:100%;min-height:60px;padding:0 14px 0 10px;border-radius:18px;background:#2C2F38;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:background-color calc(180ms*var(--speed)) var(--std), transform calc(180ms*var(--speed)) var(--std)}
+.pick .tile{width:40px;height:40px;border-radius:13px;font-size:17px}
+.pick .nm{flex:1 1 auto;font-size:15px}
+.pick.is-down{background:#363A45;transform:scale(.985);transition-duration:calc(70ms*var(--speed))}
+@media (hover:hover){.pick:hover{background:#31343E}}
+.pick:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pick:disabled{cursor:not-allowed}
+.pick:disabled .tile,.pick:disabled .nm{opacity:.45}
+.ck{width:24px;height:24px;border-radius:12px;box-sizing:border-box;border:1.5px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;color:#2A1B12;
+  transition:background-color calc(180ms*var(--speed)) var(--std), border-color calc(180ms*var(--speed)) var(--std)}
+.ck svg{opacity:0;transform:scale(.6);transition:opacity calc(180ms*var(--speed)) var(--std), transform calc(180ms*var(--speed)) var(--std)}
+.pick[aria-checked="true"] .ck{background:var(--accent);border-color:var(--accent)}
+.pick[aria-checked="true"] .ck svg{opacity:1;transform:none}
+.done{font-size:12px;color:var(--muted)}
+.pill.wide{margin-top:12px;width:100%;flex:0 0 auto}
+
+/* 模拟系统桌面 */
+.sys{position:absolute;inset:0;background:#1B1D22;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:0 40px;
+  text-align:center;opacity:0;visibility:hidden}
+.sys b{font-size:20px;font-weight:500}
+.sys p{margin:0;font-size:14px;line-height:1.7;color:var(--muted)}
+.sys .tag{font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--muted);border:1px solid var(--line);border-radius:10px;padding:4px 10px}
+
+.toast{position:absolute;left:50%;bottom:56px;transform:translate(-50%,8px);opacity:0;visibility:hidden;white-space:nowrap;
+  padding:12px 18px;border-radius:22px;font-size:14px;color:var(--ink);background:rgba(255,255,255,.14);
+  border:0.5px solid rgba(255,255,255,.3);backdrop-filter:blur(10px) saturate(180%);-webkit-backdrop-filter:blur(10px) saturate(180%);
+  transition:opacity calc(140ms*var(--speed)) var(--accel), transform calc(140ms*var(--speed)) var(--accel), visibility 0s linear calc(140ms*var(--speed))}
+.toast.show{opacity:1;transform:translate(-50%,0);visibility:visible;
+  transition:opacity calc(180ms*var(--speed)) var(--decel), transform calc(180ms*var(--speed)) var(--decel), visibility 0s linear 0s}
+
+/* 真机：去掉演示外框和控件，界面铺满屏幕 */
+html,body{margin:0;height:100%;overflow:hidden;background:#12141C}
+body{padding:0 !important;-webkit-user-select:none;user-select:none}
+.wrap{display:block;height:100%}
+.phone-box{width:100% !important;height:100% !important}
+.screen{border-radius:0;box-shadow:none}
+.controls{display:none !important}
+.app .tile img,.pick .tile img{width:100%;height:100%;object-fit:contain;max-width:none;display:block}
+.app .tile.has-img,.pick .tile.has-img{background:transparent}
+.plist .loading{padding:24px 8px;font-size:14px;color:var(--muted);text-align:center}
+
+/* 控件 */
+.controls{flex:1 1 300px;max-width:380px;min-width:0;display:flex;flex-direction:column;gap:20px;padding-top:8px}
+.controls h2{margin:0;font-family:var(--display);font-style:italic;font-weight:400;font-size:30px;line-height:1.1;text-wrap:balance}
+.controls .sub{margin:0;font-size:14px;line-height:1.7;color:var(--muted)}
+.grp{display:flex;flex-direction:column;gap:10px}
+.lab{font-size:12px;letter-spacing:2px;color:var(--muted)}
+.seg{display:flex;gap:4px;padding:4px;border-radius:14px;background:var(--ctl);width:max-content;max-width:100%;flex-wrap:wrap}
+.btn{border:0;font:inherit;font-size:14px;color:var(--ink);background:var(--ctl);min-height:44px;padding:0 18px;border-radius:12px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  transition:transform calc(180ms*var(--speed)) var(--std), background-color calc(180ms*var(--speed)) var(--std), color calc(180ms*var(--speed)) var(--std), opacity calc(180ms*var(--speed)) var(--std)}
+.seg .btn{min-height:40px;min-width:52px;padding:0 12px;background:transparent;font-family:var(--mono);font-size:13px}
+.btn.is-down{transform:scale(.96);background:var(--ctl-hi);transition-duration:calc(70ms*var(--speed))}
+@media (hover:hover){.btn:hover{background:var(--ctl-hi)}}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn[aria-checked="true"],.btn[aria-pressed="true"]{background:var(--accent);color:#1A1410}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.readout{margin:0;font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;padding:12px 14px;border-radius:12px;border:1px solid var(--line);line-height:1.8}
+.readout b{color:var(--ink);font-weight:400}
+.how{margin:0;padding:0 0 0 18px;font-size:14px;line-height:1.8;color:var(--muted)}
+.how li::marker{color:var(--accent)}
+
+@media (prefers-reduced-motion: reduce){
+  .btn,.item-in,.menu-btn,.item .dot{transition-duration:1ms !important}
+  .btn.is-down,.menu-btn.is-down,.item.is-down .item-in{transform:none}
+}
+</style>
+
+<div class="wrap">
+  <div class="phone-box" id="box">
+    <div class="screen" id="screen">
+      <div class="layer wall-wrap" id="wall"><img class="wall" src="wallpaper.jpg" alt=""></div>
+      <div class="greet" id="greet" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.2" stroke-linejoin="round"><path d="M12 2c.6 5.4 4.6 9.4 10 10-5.4.6-9.4 4.6-10 10-.6-5.4-4.6-9.4-10-10 5.4-.6 9.4-4.6 10-10z"/></svg>
+        <h1>Good evening</h1>
+        <div class="rule"></div>
+      </div>
+      <div class="edge" id="edge"></div>
+
+      <button class="scrim" id="scrim" tabindex="-1" aria-label="收起菜单"></button>
+
+      <aside class="panel" id="panel" aria-label="菜单" inert>
+        <ul class="nav" id="nav">
+          <li><button class="item" id="appsItem" data-act="apps" aria-haspopup="dialog" data-press><span class="item-in">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.4"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></svg><span class="sr">软件收纳</span><i class="dot"></i></span></button></li>
+          <li><button class="item" data-press><span class="item-in">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.4" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 16l5-5 4 4 2-2 5 5"/><circle cx="15.5" cy="8.5" r="1.5"/></svg><span class="sr">更换壁纸</span><i class="dot"></i></span></button></li>
+          <li><button class="item" data-press><span class="item-in">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.4"><circle cx="12" cy="12" r="8"/><circle cx="9" cy="9.5" r="1.2"/><circle cx="14.5" cy="8.5" r="1.2"/><circle cx="16" cy="13.5" r="1.2"/><path d="M11 20c-1-2 0-4 2-4"/></svg><span class="sr">主题与字体</span><i class="dot"></i></span></button></li>
+          <li><button class="item" data-press><span class="item-in">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.4"><rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="14" width="7" height="6" rx="2"/><rect x="14" y="14" width="6" height="6" rx="2"/></svg><span class="sr">桌面小组件</span><i class="dot"></i></span></button></li>
+          <li><button class="item" id="gear" data-act="settings" aria-haspopup="dialog" data-press><span class="item-in">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="1.4" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></svg><span class="sr">壁纸设置</span><i class="dot"></i></span></button></li>
+        </ul>
+      </aside>
+
+      <button class="menu-btn" id="menuBtn" data-press aria-label="打开菜单" aria-expanded="false" aria-controls="panel">
+        <span class="ic" id="ic"><i class="ln" id="l1"></i><i class="ln" id="l2"></i><i class="ln" id="l3"></i></span>
+      </button>
+
+      <button class="cscrim" id="cscrim" tabindex="-1" aria-label="关闭壁纸设置"></button>
+      <section class="card" id="card" role="dialog" aria-modal="true" aria-labelledby="cardTitle" inert>
+        <div class="card-in" id="cardIn">
+          <div class="ch">
+            <img class="ava" id="ava" alt="">
+            <div class="ct"><h2 id="cardTitle">壁纸设置</h2><p>壁纸桌面 · 在这台手机上</p></div>
+          </div>
+          <button class="xbtn" id="xbtn" data-press aria-label="放大卡片" aria-expanded="false">
+            <svg id="xic" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+          </button>
+          <div class="sec">桌 面</div>
+          <div class="rowwrap" id="rowwrap" data-state="main">
+            <button class="srow" id="exitRow" data-press>
+              <span class="tile"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M10 16l-4-4 4-4M6 12h10"/></svg></span>
+              <span class="rt"><b>退出桌面</b><small>回到系统自带的桌面</small></span>
+              <svg class="chev" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+            </button>
+            <div class="confirm" id="confirm">
+              <span class="cq">确定退出桌面？</span>
+              <button class="pill ghost" id="cancelExit" data-press>取消</button>
+              <button class="pill" id="doExit" data-press>退出</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" id="appsCard" role="dialog" aria-modal="true" aria-labelledby="appsTitle" inert>
+        <div class="card-in" id="appsIn">
+          <div class="ch">
+            <span class="tile big"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></svg></span>
+            <div class="ct"><h2 id="appsTitle">软件收纳</h2><p id="appsCount">还没有收纳软件</p></div>
+          </div>
+          <button class="xbtn" id="appsX" data-press aria-label="放大卡片" aria-expanded="false">
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+          </button>
+          <div class="views" id="appsViews" data-view="grid">
+            <div class="view v-grid">
+              <div class="empty" id="appsEmpty">
+                <span class="e-ic"><svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2.5 2.5"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></svg></span>
+                <p class="e1">这里还是空的</p>
+                <p class="e2">从手机里挑选要放进来的软件，只有收纳的软件会出现在这里。</p>
+                <button class="pill" id="addFirst" data-press>添加软件</button>
+              </div>
+              <div class="agrid" id="agrid" hidden></div>
+            </div>
+            <div class="view v-pick">
+              <div class="pk-h">
+                <button class="xbtn back" id="pickBack" data-press aria-label="返回收纳">
+                  <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+                </button>
+                <b>添加系统软件</b>
+              </div>
+              <ul class="plist" id="plist" aria-label="手机里的软件（示例）"></ul>
+              <button class="pill wide" id="pickOk" data-press disabled>选择要添加的软件</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="sys" id="sys" aria-hidden="true">
+        <span class="tag">模拟 · 系统桌面</span>
+        <b>已退出壁纸桌面</b>
+        <p>现在按主页键会回到手机自带的桌面。再次打开壁纸桌面 App，它会重新成为默认桌面。</p>
+        <button class="pill" id="reenter" data-press>打开壁纸桌面 App</button>
+      </div>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <section class="controls" aria-label="演示控件">
+    <div class="grp">
+      <h2>侧边菜单 · 动效原型</h2>
+      <p class="sub">按 dongxiaosheji 动效指南做：一个进度值同时驱动抽屉、遮罩、壁纸视差、菜单项错开和三条杠变形，可随时打断，松手继承手指速度。</p>
+    </div>
+    <ol class="how">
+      <li>点左上角三条杠，它会转成 ×</li>
+      <li>从屏幕最左边缘向右滑，菜单跟手拉出</li>
+      <li>在菜单上向左甩，或点右侧空白收起</li>
+      <li>动画途中再点一次，会从当前位置反向</li>
+    </ol>
+    <div class="grp">
+      <span class="lab" id="speedLab">播放速度</span>
+      <div class="seg" role="radiogroup" aria-labelledby="speedLab" id="seg">
+        <button class="btn" role="radio" aria-checked="true" data-press data-s="1">1×</button>
+        <button class="btn" role="radio" aria-checked="false" data-press data-s="0.5">0.5×</button>
+        <button class="btn" role="radio" aria-checked="false" data-press data-s="0.25">0.25×</button>
+        <button class="btn" role="radio" aria-checked="false" data-press data-s="0.1">0.1×</button>
+      </div>
+    </div>
+    <div class="row">
+      <button class="btn" id="demo" data-press>自动演示</button>
+      <button class="btn" id="rm" data-press aria-pressed="false">减弱动效</button>
+    </div>
+    <p class="readout" id="readout" aria-live="off">状态 <b>收起</b><br>进度 p <b>0.00</b> · 抽屉 x <b>-92px</b></p>
+  </section>
+</div>
+
+<script>
+(function(){
+'use strict';
+/* ── 动效内核：取自仓库 app-interactions/motion-core.js 的时钟、弹簧与缓动 ── */
+const M=(()=>{
+  const tickers=new Set(); let clock=0,last=null,raf=null; const api={speed:1};
+  function frame(now){raf=null;if(last==null)last=now;clock+=Math.min(64,now-last)*api.speed;last=now;
+    for(const t of [...tickers]) if(t(clock)===false) tickers.delete(t);
+    if(tickers.size) raf=requestAnimationFrame(frame); else last=null;}
+  function add(fn){tickers.add(fn);if(raf==null)raf=requestAnimationFrame(frame);return ()=>tickers.delete(fn);}
+  document.addEventListener('visibilitychange',()=>{last=null;});
+  function bez(x1,y1,x2,y2){const cx=3*x1,bx=3*(x2-x1)-cx,ax=1-cx-bx,cy=3*y1,by=3*(y2-y1)-cy,ay=1-cy-by;
+    const sx=s=>((ax*s+bx)*s+cx)*s,sy=s=>((ay*s+by)*s+cy)*s,dx=s=>(3*ax*s+2*bx)*s+cx;
+    return x=>{if(x<=0)return 0;if(x>=1)return 1;let s=x;for(let i=0;i<8;i++){const e=sx(s)-x,d=dx(s);if(Math.abs(e)<1e-5)return sy(s);if(Math.abs(d)<1e-6)break;s-=e/d;}
+      let lo=0,hi=1;s=x;for(let i=0;i<30;i++){const v=sx(s);if(Math.abs(v-x)<1e-5)break;if(v<x)lo=s;else hi=s;s=(lo+hi)/2;}return sy(s);};}
+  api.ease={standard:bez(.2,0,0,1),decel:bez(.05,.7,.1,1),accel:bez(.3,0,.8,.15),icon:bez(.5,0,.15,1)};
+  api.spring=({from,to,v=0,k,c,update,done})=>{let x=from,vel=v,prev=clock;update(x,vel);
+    const stop=add(t=>{let dt=(t-prev)/1000;prev=t;while(dt>0){const h=Math.min(dt,1/240);vel+=(-k*(x-to)-c*vel)*h;x+=vel*h;dt-=h;}
+      const s=Math.abs(x-to)<0.05&&Math.abs(vel)<0.5;if(s){x=to;vel=0;}update(x,vel);if(s){done&&done();return false;}});
+    return {stop};};
+  api.tween=({dur,ease,from,to,update,done})=>{const t0=clock;update(from,0);
+    const stop=add(t=>{const p=Math.min(1,(t-t0)/dur);update(from+(to-from)*ease(p),0);if(p>=1){done&&done();return false;}});return {stop};};
+  api.after=(ms,fn)=>{const t0=clock;return add(t=>{if(t-t0>=ms){fn();return false;}});};
+  return api;
+})();
+
+const $=id=>document.getElementById(id);
+const box=$('box'),screen=$('screen'),panel=$('panel'),scrim=$('scrim'),wall=$('wall'),greet=$('greet'),edge=$('edge'),
+      btn=$('menuBtn'),ic=$('ic'),l1=$('l1'),l2=$('l2'),l3=$('l3'),readout=$('readout');
+const items=[...document.querySelectorAll('.item')];
+const W=96;
+const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
+const mq=window.matchMedia('(prefers-reduced-motion: reduce)');
+let reduced=mq.matches;
+let x=-W, vel=0, anim=null, target='closed', scale=1;
+
+/* ── 手机按视口缩放；内部坐标始终是 390×844 ── */
+// 真机：按屏幕宽度缩放 390 宽的设计坐标，高度跟随屏幕
+let screenH=844;
+function fit(){
+  scale=window.innerWidth/390;
+  screenH=window.innerHeight/scale;
+  screen.style.height=screenH+'px';
+  screen.style.transform='scale('+scale+')';
+}
+window.addEventListener('resize',fit); fit();
+
+/* ── 一个进度值驱动全部表现 ── */
+function render(){
+  const p=clamp((x+W)/W);
+  if(reduced){
+    panel.style.transform=p>0?'translateX(0)':'translateX(-96px)';
+    panel.style.opacity=p;
+    wall.style.transform='none'; greet.style.transform='none'; greet.style.opacity=1-.6*p;
+    items.forEach(el=>{el.style.opacity=1;el.style.transform='none';});
+  }else{
+    panel.style.transform='translateX('+x.toFixed(2)+'px)';
+    panel.style.opacity=1;
+    wall.style.transform='translateX('+(p*12).toFixed(2)+'px)';
+    greet.style.transform='translateX('+(p*12).toFixed(2)+'px)';
+    greet.style.opacity=1-.6*p;
+    items.forEach((el,i)=>{const t=clamp((p-.3-i*.07)/.45);const e=M.ease.standard(t);
+      el.style.opacity=e.toFixed(3); el.style.transform='translateX('+((1-e)*-16).toFixed(2)+'px)';});
+  }
+  scrim.style.opacity=p;
+  edge.style.opacity=(.22*(1-p)).toFixed(3);
+  // 三条杠 → ×：前 26% 逆时针预备 8°，之后整组顺转 180° 并收拢成 ×（motion-icons/menu-close）
+  let rot, q;
+  if(reduced){ q=p>.5?1:0; rot=0; }
+  else if(p<.26){ q=0; rot=-8*Math.sin(Math.PI/2*(p/.26)); }
+  else { q=M.ease.icon((p-.26)/.74); rot=-8+188*q; }
+  ic.style.transform='rotate('+rot.toFixed(2)+'deg)';
+  l1.style.transform='translateY('+(-6*(1-q)).toFixed(2)+'px) rotate('+(45*q).toFixed(2)+'deg)';
+  l2.style.transform='scaleX('+(1-q).toFixed(3)+')'; l2.style.opacity=clamp(1-q*1.6).toFixed(3);
+  l3.style.transform='translateY('+(6*(1-q)).toFixed(2)+'px) rotate('+(-45*q).toFixed(2)+'deg) translateX('+(-3*(1-q)).toFixed(2)+'px) scaleX('+(.625+.375*q).toFixed(3)+')';
+  if(readout) readout.innerHTML='状态 <b>'+(drag&&drag.active?'跟手拖动':anim?(target==='open'?'展开中':'收起中'):(target==='open'?'展开':'收起'))+
+    '</b><br>进度 p <b>'+p.toFixed(2)+'</b> · 抽屉 x <b>'+Math.round(x)+'px</b>'+(lastV!=null?' · 松手 <b>'+Math.round(lastV)+'px/s</b>':'');
+}
+
+function beginLayer(){ panel.style.visibility='visible'; scrim.style.visibility='visible'; panel.style.willChange='transform'; wall.style.willChange='transform'; }
+function settle(){
+  anim=null; panel.style.willChange=''; wall.style.willChange='';
+  if(target==='closed'){ panel.style.visibility='hidden'; scrim.style.visibility='hidden'; }
+  render();
+}
+function setTarget(open){
+  target=open?'open':'closed';
+  btn.setAttribute('aria-expanded',open?'true':'false');
+  btn.setAttribute('aria-label',open?'收起菜单':'打开菜单');
+  panel.inert=!open;
+}
+function animateTo(open,v){
+  setTarget(open);
+  if(anim) anim.stop();
+  beginLayer();
+  const to=open?0:-W;
+  if(reduced){
+    anim=M.tween({dur:100,ease:M.ease.standard,from:x,to,update:nx=>{x=nx;render();},done:settle});
+  }else{
+    const s=open?{k:380,c:38}:{k:420,c:41};   // ten-sheets 吸附 / 甩出弹簧，收起更硬更快
+    anim=M.spring({from:x,to,v:v==null?vel:v,k:s.k,c:s.c,update:(nx,nv)=>{x=nx;vel=nv;render();},done:settle});
+  }
+}
+
+/* ── 按下反馈：pointerdown 当帧生效 ── */
+function clearPress(){document.querySelectorAll('.is-down').forEach(el=>el.classList.remove('is-down'));}
+document.addEventListener('pointerdown',e=>{const el=e.target.closest('[data-press]');if(el&&!el.disabled)el.classList.add('is-down');});
+['pointerup','pointercancel'].forEach(t=>document.addEventListener(t,clearPress));
+document.addEventListener('pointerout',e=>{const el=e.target.closest&&e.target.closest('[data-press]');if(el&&!el.contains(e.relatedTarget))el.classList.remove('is-down');});
+
+/* ── 点击 ── */
+let suppress=false;
+btn.addEventListener('click',()=>{ if(suppress)return; animateTo(target!=='open'); });
+scrim.addEventListener('click',()=>{ if(suppress)return; animateTo(false); btn.focus({preventScroll:true}); });
+items.forEach(it=>it.addEventListener('click',()=>{
+  if(suppress)return;
+  if(it.dataset.act==='settings'){ setCard.show(); return; }
+  if(it.dataset.act==='apps'){ appsCard.show(); return; }
+  items.forEach(o=>o.setAttribute('aria-current','false')); it.setAttribute('aria-current','true');
+  M.after(90,()=>{ animateTo(false); btn.focus({preventScroll:true}); });
+}));
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape'||sysOn)return;
+  if(activeCard){
+    if(activeCard===setCard&&rowwrap.dataset.state==='confirm'){ rowwrap.dataset.state='main'; exitRow.focus({preventScroll:true}); }
+    else if(activeCard===appsCard&&views.dataset.view==='pick') backToGrid();
+    else activeCard.close();
+    return;
+  }
+  if(target==='open'){ animateTo(false); btn.focus({preventScroll:true}); }
+});
+
+/* ── 拖拽：边缘右滑拉出，菜单上左滑收起；松手看位移 + 速度 ── */
+let drag=null, samples=[], lastV=null;
+function track(cx){const t=performance.now();samples.push([t,cx]);while(samples.length>2&&t-samples[0][0]>80)samples.shift();}
+function velocity(){if(samples.length<2)return 0;const a=samples[0],b=samples[samples.length-1];return (b[1]-a[1])/Math.max(16,b[0]-a[0])*1000/scale;}
+screen.addEventListener('pointerdown',e=>{
+  if(e.button>0||activeCard||sysOn)return;
+  const r=screen.getBoundingClientRect(), lx=(e.clientX-r.left)/scale;
+  if(e.target.closest('#menuBtn'))return;
+  if(target!=='open'&&lx>24)return;
+  drag={id:e.pointerId,sx:e.clientX,sy:e.clientY,startX:x,active:false};
+  samples=[]; track(e.clientX);
+});
+screen.addEventListener('pointermove',e=>{
+  if(!drag||e.pointerId!==drag.id)return;
+  const dx=(e.clientX-drag.sx)/scale, dy=(e.clientY-drag.sy)/scale;
+  if(!drag.active){
+    if(Math.abs(dx)>6&&Math.abs(dx)>Math.abs(dy)){
+      drag.active=true; clearPress(); screen.setPointerCapture(e.pointerId);
+      if(anim){anim.stop();anim=null;} drag.startX=x-dx; beginLayer();
+    }else if(Math.abs(dy)>10){drag=null;return;}
+    else return;
+  }
+  let nx=drag.startX+dx;
+  if(nx>0) nx=nx*0.15;                 // 拉过头只给一点阻尼
+  x=Math.max(-W,nx); track(e.clientX); render();
+});
+function endDrag(e){
+  if(!drag||e.pointerId!==drag.id)return;
+  const was=drag.active; drag=null;
+  if(!was)return;
+  const v=velocity(); lastV=v;
+  const p=(x+W)/W;
+  let open;
+  if(v>500) open=true; else if(v<-500) open=false; else open=p>.5;
+  suppress=true; setTimeout(()=>{suppress=false;},0);
+  animateTo(open,clamp(v,-3000,3000));
+}
+screen.addEventListener('pointerup',endDrag);
+screen.addEventListener('pointercancel',endDrag);
+
+/* ── 演示控件 ── */
+const segBtns=[...document.querySelectorAll('#seg .btn')];
+segBtns.forEach(b=>b.addEventListener('click',()=>{
+  segBtns.forEach(o=>o.setAttribute('aria-checked','false')); b.setAttribute('aria-checked','true');
+  const s=parseFloat(b.dataset.s); M.speed=s; document.documentElement.style.setProperty('--speed',(1/s).toFixed(3));
+}));
+const rm=$('rm');
+function setReduced(v){reduced=v;rm.setAttribute('aria-pressed',v?'true':'false');render();}
+rm.addEventListener('click',()=>setReduced(!reduced));
+mq.addEventListener&&mq.addEventListener('change',e=>setReduced(e.matches));
+const demo=$('demo');
+demo.addEventListener('click',()=>{
+  demo.disabled=true; demo.textContent='演示中…'; demo.setAttribute('aria-busy','true');
+  animateTo(true,0);
+  M.after(1400,()=>{ animateTo(false,0); M.after(700,()=>{ demo.disabled=false; demo.textContent='自动演示'; demo.removeAttribute('aria-busy'); }); });
+});
+
+/* ── 卡片弹窗：每张卡片一个 o（出现 / 消失）和一个 s（放大 / 缩小），都可打断 ── */
+const cscrim=$('cscrim'),sys=$('sys'),reenter=$('reenter'),gear=$('gear'),appsItem=$('appsItem'),
+      rowwrap=$('rowwrap'),exitRow=$('exitRow'),cancelExit=$('cancelExit'),doExit=$('doExit');
+$('ava').src=document.querySelector('.wall').src;
+const B={l:0,t:0,w:390,h:844,r:44};
+const lerp=(a,b,t)=>a+(b-a)*t;
+let activeCard=null,sysOn=false,sysAnim=null;
+function makeCard(el,inner,xb,A,origin,trigger,onHidden){
+  const c={el,A,trigger,o:0,oAnim:null,open:false,s:0,sv:0,sAnim:null,expanded:false};
+  const xic=xb.querySelector('svg');
+  el.style.transformOrigin=origin;
+  c.render=()=>{
+    const oc=clamp(c.o), s=c.s;
+    el.style.left=lerp(A.l,B.l,s).toFixed(2)+'px';
+    el.style.top=lerp(A.t,B.t,s).toFixed(2)+'px';
+    el.style.width=lerp(A.w,B.w,s).toFixed(2)+'px';
+    el.style.height=lerp(A.h,screenH,s).toFixed(2)+'px';
+    el.style.borderRadius=lerp(A.r,B.r,clamp(s)).toFixed(2)+'px';
+    inner.style.paddingTop=(24+40*clamp(s)).toFixed(2)+'px';
+    el.style.opacity=oc.toFixed(3);
+    el.style.transform=reduced?'none':'scale('+(0.94+0.06*c.o).toFixed(4)+')';
+    if(activeCard===c||!activeCard) cscrim.style.opacity=oc.toFixed(3);
+    xic.style.transform=reduced?(c.expanded?'rotate(180deg)':'none'):'rotate('+(180*s).toFixed(2)+'deg)';
+  };
+  c.runO=to=>{
+    if(c.oAnim) c.oAnim.stop();
+    const done=()=>{c.oAnim=null; if(!c.open) c.hidden();};
+    if(reduced) c.oAnim=M.tween({dur:100,ease:M.ease.standard,from:c.o,to,update:v=>{c.o=v;c.render();},done});
+    else{ const sp=to?{k:380,c:38}:{k:420,c:41}; c.oAnim=M.spring({from:c.o,to,v:0,k:sp.k,c:sp.c,update:v=>{c.o=v;c.render();},done}); }
+  };
+  c.show=()=>{
+    if(activeCard&&activeCard!==c) activeCard.close(true);
+    activeCard=c; c.open=true; el.style.visibility='visible'; cscrim.style.visibility='visible';
+    el.inert=false; panel.inert=true; btn.inert=true;
+    c.runO(1);
+    M.after(60,()=>{ if(c.open) xb.focus({preventScroll:true}); });
+  };
+  c.close=silent=>{
+    if(!c.open)return;
+    c.open=false; el.inert=true; if(activeCard===c) activeCard=null;
+    panel.inert=(target!=='open'); btn.inert=false;
+    c.runO(0);
+    if(!silent) trigger.focus({preventScroll:true});
+  };
+  c.hidden=()=>{
+    el.style.visibility='hidden'; if(!activeCard) cscrim.style.visibility='hidden';
+    if(c.sAnim){c.sAnim.stop();c.sAnim=null;}
+    c.s=0; c.sv=0; c.setExpanded(false); onHidden&&onHidden(); c.render();
+  };
+  c.reset=()=>{ c.open=false; if(c.oAnim){c.oAnim.stop();c.oAnim=null;} c.o=0; el.inert=true; c.hidden(); };
+  c.setExpanded=v=>{ c.expanded=v; xb.setAttribute('aria-expanded',v?'true':'false'); xb.setAttribute('aria-label',v?'缩小卡片':'放大卡片'); };
+  c.toggle=()=>{
+    c.setExpanded(!c.expanded);
+    if(c.sAnim) c.sAnim.stop();
+    const to=c.expanded?1:0;
+    if(reduced) c.sAnim=M.tween({dur:100,ease:M.ease.standard,from:c.s,to,update:v=>{c.s=v;c.render();},done:()=>{c.sAnim=null;}});
+    else{ const sp=c.expanded?{k:260,c:26}:{k:380,c:38};   // 放大用 gentle，缩小更干脆
+      c.sAnim=M.spring({from:c.s,to,v:c.sv,k:sp.k,c:sp.c,update:(v,nv)=>{c.s=v;c.sv=nv;c.render();},done:()=>{c.sAnim=null;c.sv=0;}}); }
+  };
+  xb.addEventListener('click',c.toggle);
+  return c;
+}
+// 缩放原点对准侧栏里触发它的那个图标
+const setCard=makeCard($('card'),$('cardIn'),$('xbtn'),{l:16,t:150,w:358,h:268,r:28},'30px 242px',gear,()=>{rowwrap.dataset.state='main';});
+const appsCard=makeCard($('appsCard'),$('appsIn'),$('appsX'),{l:16,t:120,w:358,h:470,r:28},'30px 32px',appsItem,()=>{views.dataset.view='grid';});
+cscrim.addEventListener('click',()=>{ activeCard&&activeCard.close(); });
+
+/* ── 软件收纳：一开始是空的，从系统软件里挑着加 ── */
+// 真机通过 window.Launcher 读手机里的软件；在浏览器里打开时退回示例数据
+const NATIVE=!!window.Launcher;
+const DEMO=['电话','信息','相机','相册','微信','支付宝','抖音','高德地图','网易云音乐','小红书','日历','时钟'].map(n=>({id:'demo/'+n,label:n,icon:''}));
+let sysApps=NATIVE?null:DEMO;            // null = 还在读取
+const byId=new Map(DEMO.map(a=>[a.id,a]));
+let stored=[]; const picked=new Set();
+try{ stored=JSON.parse(localStorage.getItem('stored-apps')||'[]'); if(!Array.isArray(stored)) stored=[]; }catch(e){ stored=[]; }
+function saveStored(){ try{ localStorage.setItem('stored-apps',JSON.stringify(stored)); }catch(e){} }
+try{ const cache=JSON.parse(localStorage.getItem('app-meta')||'{}'); Object.keys(cache).forEach(k=>byId.set(k,cache[k])); }catch(e){}
+function esc(t){ return String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function tileHtml(a){ return a&&a.icon?'<span class="tile has-img"><img alt="" src="'+a.icon+'"></span>':'<span class="tile">'+esc((a?a.label:'?')[0])+'</span>'; }
+window.__onApps=function(json){
+  let list=[]; try{ list=JSON.parse(json); }catch(e){}
+  list.sort((a,b)=>a.label.localeCompare(b.label,'zh-Hans-CN'));
+  sysApps=list; const meta={};
+  list.forEach(a=>{ byId.set(a.id,a); if(stored.includes(a.id)) meta[a.id]=a; });
+  // 已卸载的软件从收纳里移除
+  if(list.length){ const before=stored.length; stored=stored.filter(id=>list.some(a=>a.id===id)); if(stored.length!==before) saveStored(); }
+  try{ localStorage.setItem('app-meta',JSON.stringify(meta)); }catch(e){}
+  renderGrid();
+  if(views.dataset.view==='pick') fillPicker();
+};
+function refreshApps(){ if(NATIVE) window.Launcher.loadApps('__onApps'); }
+refreshApps();
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) refreshApps(); });
+const agrid=$('agrid'),appsEmpty=$('appsEmpty'),appsCount=$('appsCount'),views=$('appsViews'),plist=$('plist'),pickOk=$('pickOk'),pickBack=$('pickBack');
+const PLUS='<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+const CHECK='<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+function renderGrid(added){
+  added=added||[];
+  appsEmpty.hidden=stored.length>0; agrid.hidden=stored.length===0;
+  agrid.innerHTML=stored.map(id=>{ const a=byId.get(id)||{label:'?',icon:''};
+    return '<button class="app'+(added.includes(id)?' new':'')+'" data-press data-app="'+esc(id)+'">'+tileHtml(a)+'<span class="nm">'+esc(a.label)+'</span></button>'; }).join('')+
+    '<button class="app add" id="addTile" data-press><span class="tile">'+PLUS+'</span><span class="nm">添加</span></button>';
+  appsCount.textContent=stored.length?'已收纳 '+stored.length+' 个软件':'还没有收纳软件';
+  if(added.length){
+    void agrid.offsetWidth;   // 先落在初始态，再依次弹入
+    const news=[...agrid.querySelectorAll('.app.new')];
+    news.forEach((el,i)=>{ el.style.transitionDelay='calc('+(140+Math.min(i*40,300))+'ms * var(--speed))'; el.classList.remove('new'); });
+    M.after(140+Math.min(news.length*40,300)+260,()=>news.forEach(el=>{el.style.transitionDelay='';}));
+  }
+}
+function fillPicker(){
+  if(!sysApps){ plist.innerHTML='<li class="loading">正在读取手机里的软件…</li>'; return; }
+  plist.innerHTML=sysApps.map(a=>{ const has=stored.includes(a.id), on=picked.has(a.id);
+    return '<li><button class="pick" role="checkbox" aria-checked="'+on+'" data-press data-app="'+esc(a.id)+'"'+(has?' disabled':'')+'>'+tileHtml(a)+'<span class="nm">'+esc(a.label)+'</span>'+
+      (has?'<span class="done">已收纳</span>':'<span class="ck">'+CHECK+'</span>')+'</button></li>'; }).join('');
+}
+function openPicker(){
+  picked.clear(); fillPicker(); refreshApps();
+  updateOk(); views.dataset.view='pick';
+  M.after(80,()=>pickBack.focus({preventScroll:true}));
+}
+function updateOk(){ pickOk.disabled=picked.size===0; pickOk.textContent=picked.size?'添加 '+picked.size+' 个':'选择要添加的软件'; }
+function backToGrid(){ views.dataset.view='grid'; M.after(80,()=>{ const t=stored.length?$('addTile'):$('addFirst'); t&&t.focus({preventScroll:true}); }); }
+plist.addEventListener('click',e=>{ const b=e.target.closest('.pick'); if(!b||b.disabled)return;
+  const n=b.dataset.app, on=!picked.has(n); on?picked.add(n):picked.delete(n); b.setAttribute('aria-checked',on?'true':'false'); updateOk(); });
+pickBack.addEventListener('click',backToGrid);
+pickOk.addEventListener('click',()=>{
+  const add=(sysApps||[]).map(a=>a.id).filter(id=>picked.has(id)&&!stored.includes(id)); if(!add.length)return;
+  stored.push(...add); saveStored();
+  try{ const meta=JSON.parse(localStorage.getItem('app-meta')||'{}'); add.forEach(id=>{ meta[id]=byId.get(id); }); localStorage.setItem('app-meta',JSON.stringify(meta)); }catch(e){}
+  views.dataset.view='grid'; renderGrid(add);
+  M.after(80,()=>{ const t=$('addTile'); t&&t.focus({preventScroll:true}); });
+});
+$('addFirst').addEventListener('click',openPicker);
+agrid.addEventListener('click',e=>{ const b=e.target.closest('.app'); if(!b)return;
+  if(b.id==='addTile') openPicker();
+  else if(NATIVE) window.Launcher.launch(b.dataset.app);
+  else showToast('打开「'+(byId.get(b.dataset.app)||{label:''}).label+'」（模拟）'); });
+renderGrid();
+
+exitRow.addEventListener('click',()=>{ rowwrap.dataset.state='confirm'; M.after(80,()=>doExit.focus({preventScroll:true})); });
+cancelExit.addEventListener('click',()=>{ rowwrap.dataset.state='main'; exitRow.focus({preventScroll:true}); });
+
+/* ── 退出桌面 → 模拟回到系统桌面 ── */
+function runSys(to,dur,ease,done){
+  if(sysAnim) sysAnim.stop();
+  const from=parseFloat(sys.style.opacity)||0;
+  sysAnim=M.tween({dur:reduced?100:dur,ease,from,to,update:v=>{
+    sys.style.opacity=v.toFixed(3); sys.style.transform=reduced?'none':'scale('+(1.03-0.03*v).toFixed(4)+')';
+  },done:()=>{sysAnim=null;done&&done();}});
+}
+doExit.addEventListener('click',()=>{
+  if(NATIVE){
+    // 真机：打开系统「默认桌面」设置，选回手机自带的桌面
+    setCard.close(true); rowwrap.dataset.state='main';
+    window.Launcher.exitDesktop();
+    return;
+  }
+  doExit.disabled=true; cancelExit.disabled=true; doExit.textContent='退出中…'; doExit.setAttribute('aria-busy','true');
+  M.after(300,()=>{
+    sysOn=true; sys.style.visibility='visible'; sys.setAttribute('aria-hidden','false');
+    setCard.el.inert=true; appsCard.el.inert=true; panel.inert=true; btn.inert=true;
+    runSys(1,320,M.ease.standard,()=>{
+      // 系统桌面盖住后，把壁纸桌面复位到干净的初始态
+      activeCard=null; setCard.reset(); appsCard.reset(); cscrim.style.visibility='hidden';
+      if(anim){anim.stop();anim=null;} x=-W; vel=0; setTarget(false); settle();
+      doExit.disabled=false; cancelExit.disabled=false; doExit.textContent='退出'; doExit.removeAttribute('aria-busy');
+      reenter.focus({preventScroll:true});
+    });
+  });
+});
+reenter.addEventListener('click',()=>{
+  runSys(0,220,M.ease.accel,()=>{
+    sysOn=false; sys.style.visibility='hidden'; sys.setAttribute('aria-hidden','true');
+    btn.inert=false; btn.focus({preventScroll:true});
+    showToast('已设为默认桌面');
+  });
+});
+// 原生层回调：返回键 = 收起最上面的一层；成为默认桌面后给个确认
+window.onAndroidBack=()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}));
+window.onHomeRole=ok=>showToast(ok?'已设为默认桌面':'还不是默认桌面，可在系统设置里选择');
+const toast=$('toast'); let toastT=null;
+function showToast(msg){
+  toast.textContent=msg; toast.classList.add('show');
+  if(toastT) toastT();
+  toastT=M.after(1600,()=>{ toast.classList.remove('show'); toastT=null; });
+}
+
+setReduced(reduced);
+render();
+setCard.render(); appsCard.render();
+})();
+</script>
